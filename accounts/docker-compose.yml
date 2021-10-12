@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+
+  accounts:
+    image: amarmane64/accounts:latest
+    mem_limit: 700m
+    ports:
+      - "8080:8080"
+    networks:
+      - eazybank-network
+    
+  loans:
+    image: amarmane64/loans:latest
+    mem_limit: 700m
+    ports:
+      - "8090:8090"
+    networks:
+      - eazybank-network
+    
+  cards:
+    image: amarmane64/cards:latest
+    mem_limit: 700m
+    ports:
+      - "9001:9001"
+    networks:
+      - eazybank-network
+    
+networks:
+  eazybank-network:
