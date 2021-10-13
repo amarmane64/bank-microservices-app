@@ -3,7 +3,6 @@
  */
 package com.ms.accounts.controller;
 
-
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -28,8 +27,9 @@ import com.ms.accounts.repository.AccountsRepository;
 import com.ms.accounts.service.client.CardsFeignClient;
 import com.ms.accounts.service.client.LoansFeignClient;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import io.micrometer.core.annotation.Timed;
-
 
 @RestController
 public class AccountsController {
@@ -38,17 +38,16 @@ public class AccountsController {
 
 	@Autowired
 	private AccountsRepository accountsRepository;
-	
+
 	@Autowired
 	private AccountsServiceConfig accountsConfig;
-	
-	
+
 	@Autowired
 	private CardsFeignClient cardsFeignClient;
-	
+
 	@Autowired
 	private LoansFeignClient loansFeignClient;
-	
+
 	@PostMapping("/myAccount")
 	@Timed(value = "getAccountDetails.time", description = "Time taken to return Account Details")
 	public Accounts getAccountDetails(@RequestBody Customer customer) {
@@ -62,7 +61,7 @@ public class AccountsController {
 		}
 
 	}
-	
+
 	@GetMapping("/account/properties")
 	public String getPropertyDetails() throws JsonProcessingException {
 		ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
@@ -71,9 +70,10 @@ public class AccountsController {
 		String jsonStr = ow.writeValueAsString(properties);
 		return jsonStr;
 	}
-	
-	
+
 	@PostMapping("/myCustomerDetails")
+	@Retry(name = "retryForCustomerDetails", fallbackMethod = "myCustomerDetailsFallBack")
+	//@CircuitBreaker(name = "detailsForCustomerSupportApp",fallbackMethod ="myCustomerDetailsFallBack")
 	public CustomerDetails myCustomerDetails(@RequestBody Customer customer) {
 		logger.info("myCustomerDetails() method started");
 		Accounts accounts = accountsRepository.findByCustomerId(customer.getCustomerId());
@@ -89,5 +89,23 @@ public class AccountsController {
 
 	}
 
+	private CustomerDetails myCustomerDetailsFallBack(Customer customer, Throwable t) {
+		Accounts accounts = accountsRepository.findByCustomerId(customer.getCustomerId());
+		List<Loans> loans = loansFeignClient.getLoansDetails(customer);
+		CustomerDetails customerDetails = new CustomerDetails();
+		customerDetails.setAccounts(accounts);
+		customerDetails.setLoans(loans);
+		return customerDetails;
+
+	}
+	@GetMapping("/sayHello")
+	@RateLimiter(name = "sayHello", fallbackMethod = "sayHelloFallback")
+	public String sayHello() {
+		return "Hello, Welcome to EazyBank Kubernetes cluster";
+	}
+
+	private String sayHelloFallback(Throwable t) {
+		return "Hi, Welcome to EazyBank";
+	}
 
 }
