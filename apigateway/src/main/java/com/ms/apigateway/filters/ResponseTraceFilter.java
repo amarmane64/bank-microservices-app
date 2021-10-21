@@ -18,6 +18,7 @@ public class ResponseTraceFilter {
 	@Autowired
 	FilterUtility filterUtility;
 
+	@SuppressWarnings("static-access")
 	@Bean
 	public GlobalFilter postGlobalFilter() {
 		return (exchange, chain) -> {
